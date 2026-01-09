@@ -1,77 +1,81 @@
 import streamlit as st
-import requests
-from openai import OpenAI
 from datetime import date
 
-# ---------------- CONFIG ----------------
 st.set_page_config(page_title="AI Travel Finder", layout="wide")
+
 st.title("🏨 AI Travel Finder")
+st.caption("Demo version – No API | UI + Flow Test")
 
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+# ---------------- DEMO DATA ----------------
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-# ---------------- FUNCTIONS ----------------
-
-def ai_fix_query(text):
-    res = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role": "user", "content": f"Correct hotel or place name: {text}"}
-        ]
-    )
-    return res.choices[0].message.content.strip()
-
-def ai_description(place):
-    res = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": f"Describe {place} in simple Tamil + English mix for travel app"
-            }
-        ]
-    )
-    return res.choices[0].message.content
-
-def google_places_search(query):
-    url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-    params = {
-        "query": query,
-        "key": GOOGLE_API_KEY
+DEMO_HOTELS = [
+    {
+        "name": "Blue Hills International",
+        "location": "Ooty, Tamil Nadu",
+        "phone": "+91 98765 43210",
+        "website": "https://bluehillsinternational.com",
+        "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+        "desc": "Ooty-la irukkura comfortable hotel. Family & couples-ku suitable. Budget + clean rooms."
+    },
+    {
+        "name": "Hill View Residency",
+        "location": "Ooty, Tamil Nadu",
+        "phone": "+91 91234 56789",
+        "website": "https://hillviewresidency.com",
+        "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b",
+        "desc": "Hill view rooms with peaceful atmosphere. Tourist places-ku near-la irukkum."
+    },
+    {
+        "name": "Lake Side Inn",
+        "location": "Ooty, Tamil Nadu",
+        "phone": "+91 99887 66554",
+        "website": "https://lakesideinn.com",
+        "image": "https://images.unsplash.com/photo-1501117716987-c8e1ecb210d1",
+        "desc": "Lake view stay. Couples-ku romba popular. Morning view super-aa irukkum."
     }
-    return requests.get(url, params=params).json()
+]
 
-def get_place_details(place_id):
-    url = "https://maps.googleapis.com/maps/api/place/details/json"
-    params = {
-        "place_id": place_id,
-        "fields": "formatted_phone_number,website",
-        "key": GOOGLE_API_KEY
-    }
-    return requests.get(url, params=params).json()
+# ---------------- UI FUNCTIONS ----------------
 
-def get_photo(photo_ref):
-    return f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={photo_ref}&key={GOOGLE_API_KEY}"
-
-def show_card(name, image, phone, website, desc):
+def show_card(hotel):
     st.markdown(f"""
-    <div style="background:#fff;padding:16px;border-radius:14px;
-    box-shadow:0 6px 14px rgba(0,0,0,.1);margin-bottom:20px;display:flex;gap:16px">
-        <img src="{image}" style="width:180px;height:130px;border-radius:12px;object-fit:cover">
-        <div>
-            <h4>{name}</h4>
-            <p>{desc}</p>
-            📞 {phone}<br>
-            🌐 <a href="{website}" target="_blank">{website}</a>
+    <div style="
+        background:#ffffff;
+        padding:18px;
+        border-radius:16px;
+        box-shadow:0 6px 16px rgba(0,0,0,0.12);
+        margin-bottom:20px;
+        display:flex;
+        gap:18px;
+        align-items:flex-start;
+    ">
+        <img src="{hotel['image']}" style="
+            width:200px;
+            height:140px;
+            border-radius:14px;
+            object-fit:cover;
+        ">
+        <div style="color:#111">
+            <h3 style="margin:0">{hotel['name']}</h3>
+            <p style="margin:4px 0;color:#555">{hotel['location']}</p>
+            <p>{hotel['desc']}</p>
+            📞 {hotel['phone']}<br>
+            🌐 <a href="{hotel['website']}" target="_blank">{hotel['website']}</a><br><br>
+            <button style="
+                padding:8px 16px;
+                background:#ff4b4b;
+                color:#fff;
+                border:none;
+                border-radius:8px;
+                cursor:pointer;
+            ">Book Now</button>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-# ---------------- INPUT ----------------
+# ---------------- SEARCH BAR ----------------
 
-location = st.text_input("📍 Enter location or hotel name")
+location = st.text_input("📍 Enter location or hotel name (eg: Ooty, Blue Hills)")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -79,26 +83,35 @@ with col1:
 with col2:
     check_out = st.date_input("Check-out", min_value=check_in)
 
-# ---------------- MAIN LOGIC ----------------
+tabs = st.tabs(["🏨 Room Stays", "🚗 Car Rentals", "🏍️ Bike Rentals"])
 
-if location:
-    with st.spinner("AI thinking..."):
-        fixed_query = ai_fix_query(location)
+# ---------------- ROOM STAYS ----------------
+with tabs[0]:
+    if location:
+        st.subheader("Available Room Stays")
+        for h in DEMO_HOTELS:
+            show_card(h)
+    else:
+        st.info("👆 Location enter panninaa room stays kaattum")
 
-    st.success(f"🔍 Showing results for: {fixed_query}")
+# ---------------- CAR RENTALS ----------------
+with tabs[1]:
+    if location:
+        st.success("🚗 Car rentals coming soon (Demo)")
+        show_card({
+            "name": "Ooty Car Rentals",
+            "location": "Ooty",
+            "phone": "+91 90000 11111",
+            "website": "https://ootycars.com",
+            "image": "https://images.unsplash.com/photo-1549924231-f129b911e442",
+            "desc": "Innova, Swift, Etios available. Driver option irukku."
+        })
 
-    data = google_places_search(f"hotel in {fixed_query}")
-
-    if "results" in data:
-        for h in data["results"][:5]:
-            name = h["name"]
-            photo = get_photo(h["photos"][0]["photo_reference"]) if "photos" in h else "https://via.placeholder.com/300"
-            place_id = h["place_id"]
-
-            details = get_place_details(place_id)
-            phone = details.get("result", {}).get("formatted_phone_number", "Not available")
-            website = details.get("result", {}).get("website", "Not available")
-
-            desc = ai_description(name)
-
-            show_card(name, photo, phone, website, desc)
+# ---------------- BIKE RENTALS ----------------
+with tabs[2]:
+    if location:
+        st.success("🏍️ Bike rentals coming soon (Demo)")
+        show_card({
+            "name": "Hill Ride Bikes",
+            "location": "Ooty",
+            "phone": "+91
