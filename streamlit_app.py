@@ -1,53 +1,21 @@
 import streamlit as st
 import requests
-import random
 
-st.set_page_config(page_title="Hotel Finder with Filters", layout="wide")
+st.set_page_config(page_title="Location Travel Directory", layout="wide")
 
-# ---------------- CSS FIX ----------------
-st.markdown("""
-<style>
-body { background-color: #0e1117; }
-.card {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 14px;
-    margin-bottom: 18px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-    display: flex;
-    gap: 16px;
-}
-.card img {
-    width: 160px;
-    height: 120px;
-    object-fit: cover;
-    border-radius: 10px;
-}
-.card h4 {
-    color: #111;
-    margin: 0;
-}
-.card p, .card span, .card a {
-    color: #333;
-    font-size: 14px;
-}
-.price {
-    color: #2b7cff;
-    font-weight: bold;
-}
-</style>
-""", unsafe_allow_html=True)
+st.title("🌍 Location Travel Directory")
 
 # ---------------- FUNCTIONS ----------------
-def search_hotels(location, limit=15):
+
+def search_places(query, limit=20):
     url = "https://nominatim.openstreetmap.org/search"
     params = {
-        "q": f"hotel in {location}",
+        "q": query,
         "format": "json",
         "extratags": 1,
         "limit": limit
     }
-    headers = {"User-Agent": "Hotel-App"}
+    headers = {"User-Agent": "Location-Travel-App"}
     return requests.get(url, params=params, headers=headers).json()
 
 def safe_tags(item):
@@ -58,7 +26,7 @@ def get_image(name):
     params = {
         "action": "query",
         "generator": "search",
-        "gsrsearch": name + " hotel",
+        "gsrsearch": name,
         "gsrlimit": 1,
         "prop": "imageinfo",
         "iiprop": "url",
@@ -71,71 +39,73 @@ def get_image(name):
             return p["imageinfo"][0]["url"]
     except:
         pass
-    return "https://via.placeholder.com/300x200?text=Hotel+Image"
+    return "https://via.placeholder.com/300x200?text=No+Image"
 
-def ai_price_rating():
-    price = random.randint(1500, 5000)
-    rating = round(random.uniform(3.0, 4.8), 1)
-    stars = int(round(rating))
-    available = random.choice([True, True, False])
-    return price, rating, stars, available
+def show_card(title, phone, website, map_link, image):
+    st.markdown(f"""
+    <div style="
+        background:#ffffff;
+        padding:14px;
+        border-radius:12px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.1);
+        margin-bottom:18px;
+        display:flex;
+        gap:16px;
+    ">
+        <img src="{image}" style="width:160px;height:120px;border-radius:10px;object-fit:cover;">
+        <div style="color:#111">
+            <h4>{title}</h4>
+            📞 {phone}<br>
+            🌐 {website}<br>
+            📍 <a href="{map_link}" target="_blank">View location</a>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ---------------- HEADER ----------------
-st.title("🏨 Hotel Finder with Filters")
+# ---------------- USER INPUT ----------------
+
 location = st.text_input("📍 Enter Location")
 
-# ---------------- SIDEBAR FILTERS ----------------
-st.sidebar.header("Filter by")
+tabs = st.tabs(["🏨 Room Stays", "🚗 Car Rentals", "🏍️ Bike Rentals"])
 
-only_available = st.sidebar.checkbox("Only show available")
-
-budget = st.sidebar.slider(
-    "Your Budget (per night)",
-    1000, 6000, (1500, 5000)
-)
-
-st.sidebar.subheader("Star Rating")
-star_3 = st.sidebar.checkbox("3 ⭐")
-star_4 = st.sidebar.checkbox("4 ⭐")
-star_5 = st.sidebar.checkbox("5 ⭐")
-
-selected_stars = []
-if star_3: selected_stars.append(3)
-if star_4: selected_stars.append(4)
-if star_5: selected_stars.append(5)
-
-# ---------------- RESULTS ----------------
-if location:
-    hotels = search_hotels(location)
-
-    if not hotels:
-        st.warning("No hotels found")
-    else:
+# ---------------- ROOM STAYS ----------------
+with tabs[0]:
+    if location:
+        hotels = search_places(f"hotel in {location}")
         for h in hotels:
-            price, rating, stars, available = ai_price_rating()
-
-            if only_available and not available:
-                continue
-            if not (budget[0] <= price <= budget[1]):
-                continue
-            if selected_stars and stars not in selected_stars:
-                continue
-
             tags = safe_tags(h)
-            image = get_image(h["display_name"])
+            show_card(
+                title=h["display_name"].split(",")[0],
+                phone=tags.get("phone", "Not available"),
+                website=tags.get("website", "Not available"),
+                map_link=f"https://www.openstreetmap.org/{h['osm_type']}/{h['osm_id']}",
+                image=get_image(h["display_name"])
+            )
 
-            st.markdown(f"""
-            <div class="card">
-                <img src="{image}">
-                <div>
-                    <h4>{h['display_name'].split(',')[0]}</h4>
-                    <span>⭐ {rating} ({stars}★)</span><br>
-                    <span class="price">₹{price} / night</span><br>
-                    <span>📞 {tags.get('phone','Not available')}</span><br>
-                    <span>🌐 {tags.get('website','Not available')}</span><br>
-                    <a href="https://www.openstreetmap.org/{h['osm_type']}/{h['osm_id']}" target="_blank">
-                        📍 View location
-                    </a>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+# ---------------- CAR RENTALS ----------------
+with tabs[1]:
+    if location:
+        cars = search_places(f"car rental in {location}")
+        for c in cars:
+            tags = safe_tags(c)
+            show_card(
+                title=c["display_name"].split(",")[0],
+                phone=tags.get("phone", "Not available"),
+                website=tags.get("website", "Not available"),
+                map_link=f"https://www.openstreetmap.org/{c['osm_type']}/{c['osm_id']}",
+                image=get_image(c["display_name"])
+            )
+
+# ---------------- BIKE RENTALS ----------------
+with tabs[2]:
+    if location:
+        bikes = search_places(f"bike rental in {location}")
+        for b in bikes:
+            tags = safe_tags(b)
+            show_card(
+                title=b["display_name"].split(",")[0],
+                phone=tags.get("phone", "Not available"),
+                website=tags.get("website", "Not available"),
+                map_link=f"https://www.openstreetmap.org/{b['osm_type']}/{b['osm_id']}",
+                image=get_image(b["display_name"])
+            )
